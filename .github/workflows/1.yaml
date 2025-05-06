@@ -152,9 +152,7 @@ jobs:
       - name: Build zip artifact 
         run: | 
           mkdir build 
-          cp app.py build/ 
-          cp forms.py build/ 
-          cp -r templates build/ 
+          cp main.go build/ 
           cd build && zip -r artifact.zip .
 
       - name: Display the files 
@@ -165,7 +163,7 @@ jobs:
         uses: actions/upload-artifact@v4 
         with:
           name: src-code-artifact 
-          path: artifact.zip
+          path: build/artifact.zip
 
         
   
