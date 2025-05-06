@@ -63,6 +63,13 @@ jobs:
       - name: Authenticate Snyk
         run: snyk auth 9d262b22-1f2c-4069-adb9-696793789926
 
+      - name: Install Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
       - name: Snyk and trivy Code test
         run: |
           snyk code test --sarif > snyk-code.sarif 
@@ -91,6 +98,7 @@ jobs:
             snyk-dependecies.sarif
             trivy-secrets.json
             trivy-fs-report.json
+            
 
      
       
