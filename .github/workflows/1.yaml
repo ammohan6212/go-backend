@@ -129,6 +129,8 @@ jobs:
 
     - name: Run SonarQube Scan
       uses: sonarsource/sonarqube-scan-action@master 
+      
+    - name: run sonar-scanner
       run: |
         sonar-scanner \
           -Dsonar.projectKey=go-backend \
