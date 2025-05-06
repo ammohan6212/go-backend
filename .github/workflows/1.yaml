@@ -130,7 +130,7 @@ jobs:
     - name: Run SonarQube Scan
       uses: sonarsource/sonarqube-scan-action@master  # ✅ use tagged version
       env:
-        SONAR_TOKEN: sqa_99bfa61f6eddfe30b677bdee31be4fba62e79614  # ✅ Best practice: store secrets in GitHub Secrets
+        SONAR_TOKEN: sqp_39405f69e6f2e62bfea9ebcde5640bbc0969660c  # ✅ Best practice: store secrets in GitHub Secrets
         SONAR_HOST_URL: http://34.55.243.214:9000/
     
     # - name: Wait for SonarQube Quality Gate
