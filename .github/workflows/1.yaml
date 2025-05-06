@@ -53,10 +53,7 @@ jobs:
           args: ./...
 
       - name: Build Go app
-        run: go build -o my-go-app
-
-
-          
+        run: go build -o my-go-app   
 
       - name: Set up Snyk CLI
         uses: snyk/actions/setup@806182742461562b67788a64410098c9d9b96adb
@@ -66,17 +63,12 @@ jobs:
       - name: Authenticate Snyk
         run: snyk auth 9d262b22-1f2c-4069-adb9-696793789926
 
-      - name: Snyk Code test
-        run: snyk code test --sarif > snyk-code.sarif 
+      - name: Snyk and trivy Code test
+        run: |
+          snyk code test --sarif > snyk-code.sarif 
+          snyk test > snyk-dependecies.sarif
+          trivy fs . --vuln-type=library --security-checks=vuln 
         continue-on-error: true
-
-      - name: Install Trivy
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          ignore-unfixed: true
-          severity: 'CRITICAL,HIGH'
-
       - name: Trivy Secrets Scanning
         run: |
           trivy fs . --scanners secret --format json --output trivy-secrets.json
@@ -96,12 +88,9 @@ jobs:
           name: scan-reports
           path: |
             snyk-code.sarif
-            pip-audit-report.txt
-            # safety-report.txt
+            snyk-dependecies.sarif
             trivy-secrets.json
             trivy-fs-report.json
-            # snyk-iac-report.json
-            # trivy-iac-report.json
 
      
       
@@ -129,7 +118,7 @@ jobs:
 
     - name: Run SonarQube Scan
       uses: sonarsource/sonarqube-scan-action@master 
-      
+
     - name: run sonar-scanner
       run: |
         sonar-scanner \
