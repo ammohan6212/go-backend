@@ -43,9 +43,7 @@ pipeline {
             agent { label 'security-agent' }
             steps{
                 script{
-                    sh '''
-                        go
-                    '''
+                    sh 'go '
                 }
             }
         }
