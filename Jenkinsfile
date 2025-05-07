@@ -63,9 +63,9 @@ pipeline {
         stage("measring the code coverage"){
             agent { label 'security-agent' }
             steps{
-                script(
+                script{
                     sh 'go test'
-                )
+                }
             }
         }
         // stage("check the dependecy scanning in go "){
