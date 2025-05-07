@@ -44,7 +44,7 @@ pipeline {
             steps{
                 script{
                     sh '''
-                        go mod tidy
+                        go
                     '''
                 }
             }
