@@ -157,9 +157,8 @@ pipeline {
             steps{
                 script{
                     sh '''
-                        mkdir build
-                        cp -r static/*.html  build/ || true
-                        cd build && zip -r frontend-artifact.zip .
+                        cp main.go  build/ || true
+                        cd build && zip -r go-artifact.zip .
                     '''
                 }
             }
@@ -171,7 +170,7 @@ pipeline {
                 script {
                     echo "VERSION=${env.VERSION}"
                     sh """
-                    docker build -t frontend:${env.VERSION} .
+                    docker build -t go:${env.VERSION} .
                     """
                 }
             }
@@ -182,8 +181,8 @@ pipeline {
                 script { 
                     sh """
                         ls -l
-                        snyk container test frontend:${env.VERSION}  --file=Dockerfile
-                        trivy image frontend:${env.VERSION}                 
+                        snyk container test go:${env.VERSION}  --file=Dockerfile
+                        trivy image go:${env.VERSION}                 
                     """
                 }
                 
@@ -195,8 +194,8 @@ pipeline {
             steps{
                 script{
                     sh """
-                    dockle frontend:${env.VERSION}
-                    grype frontend:${env.VERSION} > grype-image-scan.txt
+                    dockle go:${env.VERSION}
+                    grype go:${env.VERSION} > grype-image-scan.txt
                     """
                 }
             }
@@ -205,7 +204,7 @@ pipeline {
             agent { label 'security-agent' }
             steps {
                 sh """
-                docker tag frontend:${env.VERSION} mohan14242/frontend:${env.VERSION}
+                docker tag go:${env.VERSION} mohan14242/frontend:${env.VERSION}
                 """
             }
             
