@@ -129,11 +129,11 @@ jobs:
 
     - name: run sonar-scanner
       run: |
-        sonar-scanner \
-          -Dsonar.projectKey=go-backend \
-          -Dsonar.sources=. \
-          -Dsonar.host.url=http://34.55.243.214:9000 \
-          -Dsonar.token=sqp_80b3dbed5f1d3ef7e3c97b2009a80c4329754de0
+         sonar-scanner 
+        #   -Dsonar.projectKey=go-backend \
+        #   -Dsonar.sources=. \
+        #   -Dsonar.host.url=http://34.55.243.214:9000 \
+        #   -Dsonar.token=sqp_80b3dbed5f1d3ef7e3c97b2009a80c4329754de0
      
     # - name: Wait for SonarQube Quality Gate
     #   uses: sonarsource/sonarqube-quality-gate-action@master
