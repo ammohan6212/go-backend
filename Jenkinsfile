@@ -32,7 +32,13 @@ pipeline {
                 }
             }
         }
-
+        stage('get the current application version'){
+            steps{
+                script{
+                    echo "VERSION=${env.version}"
+                }
+            }
+        }
         stage("install the go modules"){
             steps{
                 sh '''
@@ -47,197 +53,145 @@ pipeline {
                 '''
             }
         }
-        stage("check the dependecy scanning using pip-audit and safety"){
+
+        stage("measring the code coverage"){
             steps{
-                sh'''
-                go install golang.org/x/vuln/cmd/govulncheck@latest
-
-            #  Run govulncheck
-            govulncheck ./...
-
-            # Install and run gosec (code analyzer for security)
-            go install github.com/securego/gosec/v2/cmd/gosec@latest
-            gosec ./...
-
-            # (Optional) Snyk CLI if snyk authentication is set
-            snyk test --file=go.mod --json > snyk-go-report.json
-
-            # (Optional) Trivy for scanning Go modules
-            trivy fs . --scanners vuln --format json --output trivy-go-deps.json
-               '''
+                script(
+                    sh 'go test -coverprofile=coverage.out ./...'
+                )
             }
-
         }
+        // stage("check the dependecy scanning in go "){
+        //     steps{
+        //         script{
+        //             sh '''
 
-        
 
+        //                 '''
+        //         }
+
+        // }
         stage("Run Unit Tests & Coverage") {
             steps {
                 sh '''
-                go test ./... -coverprofile=coverage.out
 
-                # Display coverage summary
-                go tool cover -func=coverage.out
-
-                # Generate HTML report (optional)
-                go tool cover -html=coverage.out -o coverage.html
-                
                 '''
             }
         }
+         stage("getting the version in other node"){
+             agent { label 'security-agent' }
+            steps{
+                echo "Using version ${env.VERSION} on node2"
+            }
+        }     
 
-        
-
+        stage("trivy and snyk dependecy and code test") {
+            steps
+        }
         stage("sonar-scanner stage"){
+            agent { label 'security-agent' }
             steps{
                 script{
-                    
                     sh """
-                    
                     ls -la
                     /opt/sonar-scanner/bin/sonar-scanner"""
                 }
             }
 
         }
-         stage("SonarQube Quality Gate") {
-            steps {
-                script {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
+        //  stage("SonarQube Quality Gate") {
+        //     steps {
+        //         script {
+        //             waitForQualityGate abortPipeline: true
+        //         }
+        //     }
+        // }
 
 
 
         
+       stage("Perform Snyk and Trivy Code Analysis") {
+            agent { label 'security-agent' }
+            steps {
+                script {
+                 sh '''
+                # Authenticate Snyk
+                snyk auth 9d262b22-1f2c-4069-adb9-696793789926
+
+                # Run Snyk Code Analysis (for static code issues)
+                snyk code test 
+
+                # Run Trivy for OS & library vulnerabilities
+                trivy fs . --vuln-type=library --security-checks=vuln --format json --output trivy-vuln.json
+
+                # Run Trivy for secrets
+                trivy fs . --scanners secret --format json --output trivy-secrets.json
+
+                # Run full Trivy FS scan
+                trivy fs . --format json --output trivy-fs-report.json
+            '''
+            }
+            }
+       }
+
+
+        stage("perform the build"){
+            agent { label 'security-agent' }
+            steps{
+                script{
+                    sh '''
+                        mkdir build
+                        cp -r static/*.html  build/ || true
+                        cd build && zip -r frontend-artifact.zip .
+                    '''
+                }
+            }
+        }
+
         stage("Docker Build Stage") {
-            agent { label 'docker-agent' }
+            agent { label 'security-agent' }
             steps {
                 script {
                     echo "VERSION=${env.VERSION}"
                     sh """
-                    docker build -t python:${env.VERSION} .
+                    docker build -t frontend:${env.VERSION} .
                     """
                 }
             }
         }
-        stage("perform the image scanning with snyk and trivy"){
+        stage("perform the snyk and trivy image scanning "){
+            agent { label 'security-agent' }
             steps{
-                sh '''
-                snyk container test ${IMAGE_NAME}:${env.VERSION} --format json --output trivy-image-report.json
-                trivy image mohan:4.0 > trivyimage.txt
-                '''
+                script { 
+                    sh """
+                        ls -l
+                        snyk container test frontend:${env.VERSION}  --file=Dockerfile
+                        trivy image frontend:${env.VERSION}                 
+                    """
+                }
+                
+               
             }
         }
-        stage("perform IAC test with synk"){
+        stage("perform the image scanning using the dockle and Grype"){
+            agent { label 'security-agent' }
             steps{
-                sh '''
-                snyk iac test terraform/main.tf --json > snyk-iac-report.json
-            '''
-            }
-        }
-        stage("perform IAC test with trivy"){
-            steps{
-                sh '''
-                trivy config ./terraform/ --format json --output trivy-iac-report.json
-            '''
-            }
-        }
-
-        stage("secretes detection using the trivy"){
-            steps{
-                sh '''
-                trivy fs . --scanners secret --format json --output trivy-secrets.json
-            '''
+                script{
+                    sh """
+                    dockle frontend:${env.VERSION}
+                    grype frontend:${env.VERSION} > grype-image-scan.txt
+                    """
+                }
             }
         }
         stage("tagging docker container") {
+            agent { label 'security-agent' }
             steps {
-                sh '''
-                docker run -d -p 8000:8000 mohan:4.0
-                docker tag mohan:4.0 mohan14242/mohan:4.0
-                '''
+                sh """
+                docker tag frontend:${env.VERSION} mohan14242/frontend:${env.VERSION}
+                """
             }
             
         }
-        stage('Push Docker Image') {
-            steps {
-                script {
-                    docker.withRegistry('https://registry.hub.docker.com',"docker_credentials") {  // here we need to install the docker pipeline plugin to this
-                        docker.image("mohan14242/mohan:4.0").push()
-                    }
-                }
-            }
-    }   }
-
-
-
-
-
-//         stage("Deploying into K8s Cluster") {
-//             agent { label 'kube-agent'}
-//             steps {
-//                 script {
-//                     withKubeConfig(
-//                         credentialsId: 'k8_token',  // Jenkins credentials ID where you stored kubeconfig or token
-//                         clusterName: 'my-gke-cluster',  // Optional
-//                         namespace: 'dev',  // Your namespace
-//                         serverUrl: 'https://35.220.240.181:443',  // ✅ Correct syntax with quotes and https
-//                         restrictKubeConfigAccess: false
-//                     ) {
-//                         sh """
-//                         kubectl get nodes
-//                         """
-//                     }
-//                 }
-//             }
-//         }
-//         post {
-//     always {
-//         script {
-//             slackSend (
-//                 channel: '#ci-pipeline-status',
-//                 color: '#CCCCCC',
-//                 message: "🔔 Pipeline *#${env.BUILD_NUMBER}* finished. Result: *${currentBuild.currentResult}*"
-//             )
-//         }
-//     }
-
-//     success {
-//         script {
-//             slackSend (
-//                 channel: '#ci-pipeline-status',
-//                 color: 'good',
-//                 message: "✅ Pipeline *#${env.BUILD_NUMBER}* succeeded for version *${env.VERSION}* on branch *${env.BRANCH_NAME}*"
-//             )
-//         }
-//     }
-
-//     failure {
-//         script {
-//             slackSend (
-//                 channel: '#ci-pipeline-status',
-//                 color: 'danger',
-//                 message: "❌ Pipeline *#${env.BUILD_NUMBER}* failed on branch *${env.BRANCH_NAME}*. Check Jenkins for logs."
-//             )
-//         }
-//     }
-
-//     unstable {
-//         script {
-//             slackSend (
-//                 channel: '#ci-pipeline-status',
-//                 color: 'warning',
-//                 message: "⚠️ Pipeline *#${env.BUILD_NUMBER}* is unstable. Review the test/report stages."
-//             )
-//         }
-//     }
-// }
-
-
-
-   }
-
-
- 
+    }
+}

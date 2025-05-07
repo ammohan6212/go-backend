@@ -3,7 +3,7 @@ name: creating the ci pipeline
 on: 
   push: 
     branches: 
-      - dev 
+      - main 
 permissions:
   security-events: write
   contents: read
