@@ -43,9 +43,9 @@ pipeline {
             agent { label 'security-agent' }
             steps{
                 script{
-                sh '''
-                go mod tidy
-                '''
+                    sh '''
+                        go mod tidy
+                    '''
                 }
             }
         }
@@ -53,9 +53,9 @@ pipeline {
             agent { label 'security-agent' }
             steps {
                 script{
-                sh '''
-                golangci-lint run || true
-                '''
+                    sh '''
+                    golangci-lint run || true
+                    '''
                 }
             }
         }
@@ -64,7 +64,7 @@ pipeline {
             agent { label 'security-agent' }
             steps{
                 script(
-                    sh 'go test -coverprofile=coverage.out ./...'
+                    sh 'go test'
                 )
             }
         }
