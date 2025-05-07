@@ -40,21 +40,28 @@ pipeline {
             }
         }
         stage("install the go modules"){
+            agent { label 'security-agent' }
             steps{
+                script{
                 sh '''
                 go mod tidy
                 '''
+                }
             }
         }
         stage("Linting the Code") {
+            agent { label 'security-agent' }
             steps {
+                script{
                 sh '''
                 golangci-lint run || true
                 '''
+                }
             }
         }
 
         stage("measring the code coverage"){
+            agent { label 'security-agent' }
             steps{
                 script(
                     sh 'go test -coverprofile=coverage.out ./...'
@@ -71,22 +78,34 @@ pipeline {
         //         }
 
         // }
-        stage("Run Unit Tests & Coverage") {
-            steps {
-                sh '''
+        // stage("Run Unit Tests & Coverage") {
+        //     steps {
+        //         sh '''
 
-                '''
-            }
-        }
+        //         '''
+        //     }
+        // }
          stage("getting the version in other node"){
-             agent { label 'security-agent' }
+            agent { label 'security-agent' }
             steps{
                 echo "Using version ${env.VERSION} on node2"
             }
         }     
 
         stage("trivy and snyk dependecy and code test") {
-            steps
+             agent { label 'security-agent' }
+            steps{
+                script{
+                    sh '''
+                       snyk auth 9d262b22-1f2c-4069-adb9-696793789926
+                        snyk code test --sarif > snyk-code.sarif 
+                        snyk test > snyk-dependecies.sarif
+                        trivy fs . --vuln-type=library --security-checks=vuln 
+                        ls -l 
+                    '''
+
+                }
+            }
         }
         stage("sonar-scanner stage"){
             agent { label 'security-agent' }
